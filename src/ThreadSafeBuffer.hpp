@@ -59,9 +59,6 @@ class ThreadSafeBuffer {
                         not m_next_write_index.compare_exchange_weak(
                             write_index, circular_increment(write_index));
          ++trial) {
-      // DEBUG_LOG("Failed to acquire write index "
-      //           << write_index << "; Still reading "
-      //           << m_still_reading_index.load());
       //  spinlock
       if (trial == 8) {
         trial = 0;
