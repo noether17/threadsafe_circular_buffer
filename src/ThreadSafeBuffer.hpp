@@ -4,6 +4,7 @@
 #include <atomic>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <thread>
 
 #define LOGGING
@@ -47,7 +48,8 @@ class ThreadSafeBuffer {
 
   int acquire_write_index() {
     int write_index = m_next_write_index.load();
-    DEBUG_LOG("Attempting to acquire write index " << write_index);
+    DEBUG_LOG("Attempting to acquire write index " << write_index
+                                                   << output_state());
     bool expect_true = true;
     for (int trial = 0;
          not(((m_empty.load() and
@@ -70,7 +72,7 @@ class ThreadSafeBuffer {
 
   void release_write_index(int write_index) {
     DEBUG_LOG("Entering release_write_index() with write index "
-              << write_index);
+              << write_index << output_state());
     for (int trial = 0; m_still_writing_index.load() != write_index; ++trial) {
       // spinlock
       if (trial == 8) {
@@ -79,9 +81,9 @@ class ThreadSafeBuffer {
         std::this_thread::sleep_for(1ns);
       }
     }
-    auto next_write_index = circular_increment(write_index);
-    m_still_writing_index.store(next_write_index);
-    if (next_write_index == m_next_read_index.load()) {
+    auto new_still_writing_index = circular_increment(write_index);
+    m_still_writing_index.store(new_still_writing_index);
+    if (new_still_writing_index == m_next_read_index.load()) {
       m_full.store(true);
       DEBUG_LOG("Filled the buffer at write index " << write_index);
     }
@@ -90,7 +92,8 @@ class ThreadSafeBuffer {
 
   int acquire_read_index() {
     int read_index = m_next_read_index.load();
-    DEBUG_LOG("Attempting to acquire read index " << read_index);
+    DEBUG_LOG("Attempting to acquire read index " << read_index
+                                                  << output_state());
     bool expect_true = true;
     for (int trial = 0; not(((m_full.load() and m_full.compare_exchange_strong(
                                                     expect_true, false)) or
@@ -111,7 +114,8 @@ class ThreadSafeBuffer {
   }
 
   void release_read_index(int read_index) {
-    DEBUG_LOG("Entering release_read_index() with read index " << read_index);
+    DEBUG_LOG("Entering release_read_index() with read index "
+              << read_index << output_state());
     for (int trial = 0; m_still_reading_index.load() != read_index; ++trial) {
       // spinlock
       if (trial == 8) {
@@ -120,13 +124,32 @@ class ThreadSafeBuffer {
         std::this_thread::sleep_for(1ns);
       }
     }
-    auto next_read_index = circular_increment(read_index);
-    m_still_reading_index.store(next_read_index);
-    if (next_read_index == m_next_write_index.load()) {
+    auto new_still_reading_index = circular_increment(read_index);
+    m_still_reading_index.store(new_still_reading_index);
+    if (new_still_reading_index == m_next_write_index.load()) {
       m_empty.store(true);
       DEBUG_LOG("Emptied the buffer at read index " << read_index);
     }
     DEBUG_LOG("Released read index " << read_index);
+  }
+
+  auto output_state() {
+    auto next_write = m_next_write_index.load();
+    auto still_writing = m_still_writing_index.load();
+    auto next_read = m_next_read_index.load();
+    auto still_reading = m_still_reading_index.load();
+    auto empty = m_empty.load();
+    auto full = m_full.load();
+
+    auto state_str = std::string{"; Current state:"};
+    state_str += std::string{" nw="} + std::to_string(next_write);
+    state_str += std::string{" sw="} + std::to_string(still_writing);
+    state_str += std::string{" nr="} + std::to_string(next_read);
+    state_str += std::string{" sr="} + std::to_string(still_reading);
+    state_str += std::string{" e="} + std::to_string(empty);
+    state_str += std::string{" f="} + std::to_string(full);
+
+    return state_str;
   }
 
   auto static constexpr circular_increment(int i) {
