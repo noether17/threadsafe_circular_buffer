@@ -48,18 +48,16 @@ class ThreadSafeBuffer {
   int acquire_write_index() {
     int write_index = m_next_write_index.load();
     DEBUG_LOG("Attempting to acquire write index " << write_index);
-    if (bool empty_expected = true;
-        m_empty and m_empty.compare_exchange_strong(empty_expected, false)) {
-      DEBUG_LOG("Acquired write index " << write_index
-                                        << " with empty buffer.");
-      m_next_write_index.store(circular_increment(write_index));
-      return write_index;
-    }
-    for (int trial = 0; write_index == m_still_reading_index.load() or
-                        not m_next_write_index.compare_exchange_weak(
-                            write_index, circular_increment(write_index));
-         ++trial) {
-      //  spinlock
+    bool expect_true = true;
+    for (int trial = 0;
+         not(((m_empty.load() and
+               m_empty.compare_exchange_strong(expect_true, false)) or
+              (write_index = m_next_write_index.load()) !=
+                  m_still_reading_index.load()) and
+             m_next_write_index.compare_exchange_strong(
+                 write_index, circular_increment(write_index)));
+         ++trial, expect_true = true) {
+      // spinlock
       if (trial == 8) {
         trial = 0;
         using namespace std::chrono_literals;
@@ -93,16 +91,14 @@ class ThreadSafeBuffer {
   int acquire_read_index() {
     int read_index = m_next_read_index.load();
     DEBUG_LOG("Attempting to acquire read index " << read_index);
-    if (bool full_expected = true;
-        m_full and m_full.compare_exchange_strong(full_expected, false)) {
-      DEBUG_LOG("Acquired read index " << read_index << " with full buffer.");
-      m_next_read_index.store(circular_increment(read_index));
-      return read_index;
-    }
-    for (int trial = 0; read_index == m_still_writing_index.load() or
-                        not m_next_read_index.compare_exchange_weak(
-                            read_index, circular_increment(read_index));
-         ++trial) {
+    bool expect_true = true;
+    for (int trial = 0; not(((m_full.load() and m_full.compare_exchange_strong(
+                                                    expect_true, false)) or
+                             (read_index = m_next_read_index.load()) !=
+                                 m_still_writing_index.load()) and
+                            m_next_read_index.compare_exchange_strong(
+                                read_index, circular_increment(read_index)));
+         ++trial, expect_true = true) {
       // spinlock
       if (trial == 8) {
         trial = 0;
