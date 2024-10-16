@@ -5,9 +5,9 @@
 #include <thread>
 #include <vector>
 
-#include "ThreadSafeBuffer.hpp"
+#include "ThreadSafeBuffer2.hpp"
 
-class ThreadSafeBufferTest : public testing::Test {
+class ThreadSafeBuffer2Test : public testing::Test {
  protected:
   auto static constexpr buffer_size = 16;
   auto static constexpr n_passes = 8;
@@ -16,10 +16,10 @@ class ThreadSafeBufferTest : public testing::Test {
   auto static constexpr n_threads = 128;
   auto static constexpr n_ops_per_thread = n_values / n_threads;
 
-  ThreadSafeBuffer<int, buffer_size> buffer{};
+  ThreadSafeBuffer2<int, buffer_size> buffer{};
 };
 
-TEST_F(ThreadSafeBufferTest, SingleThreadAlternateWriteRead) {
+TEST_F(ThreadSafeBuffer2Test, SingleThreadAlternateWriteRead) {
   auto output_vector = std::vector<int>{};
 
   for (auto i = 0; i < n_values; ++i) {
@@ -33,7 +33,7 @@ TEST_F(ThreadSafeBufferTest, SingleThreadAlternateWriteRead) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, MultipleWritersSingleReader) {
+TEST_F(ThreadSafeBuffer2Test, MultipleWritersSingleReader) {
   auto writers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
 
@@ -58,7 +58,7 @@ TEST_F(ThreadSafeBufferTest, MultipleWritersSingleReader) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, SingleWriterMultipleReaders) {
+TEST_F(ThreadSafeBuffer2Test, SingleWriterMultipleReaders) {
   auto readers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
   auto output_mx = std::mutex{};
@@ -90,7 +90,7 @@ TEST_F(ThreadSafeBufferTest, SingleWriterMultipleReaders) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersWriteFirst) {
+TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersWriteFirst) {
   auto writers = std::vector<std::jthread>{};
   auto readers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
@@ -129,7 +129,7 @@ TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersWriteFirst) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersReadFirst) {
+TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersReadFirst) {
   auto writers = std::vector<std::jthread>{};
   auto readers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
@@ -168,7 +168,7 @@ TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersReadFirst) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersSlowWrites) {
+TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersSlowWrites) {
   auto writers = std::vector<std::jthread>{};
   auto readers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
@@ -209,7 +209,7 @@ TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersSlowWrites) {
   }
 }
 
-TEST_F(ThreadSafeBufferTest, MultipleWritersMultipleReadersSlowReads) {
+TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersSlowReads) {
   auto writers = std::vector<std::jthread>{};
   auto readers = std::vector<std::jthread>{};
   auto output_vector = std::vector<int>{};
