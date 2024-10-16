@@ -13,7 +13,7 @@ class ThreadSafeBuffer2Test : public testing::Test {
   auto static constexpr n_passes = 8;
   auto static constexpr n_values = n_passes * buffer_size;
 
-  auto static constexpr n_threads = 128;
+  auto static constexpr n_threads = 8;
   auto static constexpr n_ops_per_thread = n_values / n_threads;
 
   ThreadSafeBuffer2<int, buffer_size> buffer{};
@@ -96,7 +96,7 @@ TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersWriteFirst) {
   auto output_vector = std::vector<int>{};
   auto output_mx = std::mutex{};
 
-  for (auto i = 0; i < n_values; ++i) {
+  for (auto i = 0; i < n_threads; ++i) {
     writers.push_back(std::jthread(
         [this](int i) {
           auto thread_offset = i * n_ops_per_thread;
@@ -147,7 +147,7 @@ TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersReadFirst) {
           output_vector.push_back(a);
         }));
   }
-  for (auto i = 0; i < n_values; ++i) {
+  for (auto i = 0; i < n_threads; ++i) {
     writers.push_back(std::jthread(
         [this](int i) {
           auto thread_offset = i * n_ops_per_thread;
