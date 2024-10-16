@@ -53,11 +53,13 @@ class ThreadSafeBuffer2 {
     DEBUG_LOG("Attempting to acquire write index " << write_index << " ("
                                                    << write_index % N << ")"
                                                    << output_state());
-    for (auto trial = 0; not(((write_index = m_next_write_index.load()) !=
-                              m_still_reading_index.load() + N) and
-                             m_next_write_index.compare_exchange_strong(
-                                 write_index, write_index + 1));
-         ++trial) {
+    auto index_acquired = [this, &write_index]() {
+      return (((write_index = m_next_write_index.load()) !=
+               m_still_reading_index.load() + N) and
+              m_next_write_index.compare_exchange_strong(write_index,
+                                                         write_index + 1));
+    };
+    for (auto trial = 0; not index_acquired(); ++trial) {
       // spinlock
       if (trial == 8) {
         trial = 0;
@@ -91,11 +93,13 @@ class ThreadSafeBuffer2 {
     auto read_index = m_next_read_index.load();
     DEBUG_LOG("Attempting to acquire read index "
               << read_index << " (" << read_index % N << ")" << output_state());
-    for (int trial = 0; not(((read_index = m_next_read_index.load()) !=
-                             m_still_writing_index.load()) and
-                            m_next_read_index.compare_exchange_strong(
-                                read_index, read_index + 1));
-         ++trial) {
+    auto index_acquired = [this, &read_index]() {
+      return (((read_index = m_next_read_index.load()) !=
+               m_still_writing_index.load()) and
+              m_next_read_index.compare_exchange_strong(read_index,
+                                                        read_index + 1));
+    };
+    for (int trial = 0; not index_acquired(); ++trial) {
       // spinlock
       if (trial == 8) {
         trial = 0;
