@@ -2,13 +2,13 @@
 
 #include <array>
 #include <atomic>
-#include <iostream>
-#include <sstream>
 #include <string>
 #include <thread>
 
-#define LOGGING
+// #define LOGGING
 #ifdef LOGGING
+#include <iostream>
+#include <sstream>
 #define DEBUG_LOG(message)            \
   {                                   \
     std::stringstream output_stream;  \
