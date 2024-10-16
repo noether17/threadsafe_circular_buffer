@@ -59,14 +59,7 @@ class ThreadSafeBuffer2 {
               m_next_write_index.compare_exchange_strong(write_index,
                                                          write_index + 1));
     };
-    for (auto trial = 0; not index_acquired(); ++trial) {
-      // spinlock
-      if (trial == 8) {
-        trial = 0;
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1ns);
-      }
-    }
+    spinlock(index_acquired);
     DEBUG_LOG("Acquired write index " << write_index << " (" << write_index % N
                                       << ")");
     return write_index;
@@ -76,14 +69,9 @@ class ThreadSafeBuffer2 {
     DEBUG_LOG("Entering release_write_index() with write index "
               << write_index << " (" << write_index % N << ")"
               << output_state());
-    for (int trial = 0; m_still_writing_index.load() != write_index; ++trial) {
-      // spinlock
-      if (trial == 8) {
-        trial = 0;
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1ns);
-      }
-    }
+    spinlock([this, write_index]() {
+      return m_still_writing_index.load() == write_index;
+    });
     m_still_writing_index.fetch_add(1u);
     DEBUG_LOG("Released write index " << write_index << " (" << write_index % N
                                       << ")");
@@ -99,14 +87,7 @@ class ThreadSafeBuffer2 {
               m_next_read_index.compare_exchange_strong(read_index,
                                                         read_index + 1));
     };
-    for (int trial = 0; not index_acquired(); ++trial) {
-      // spinlock
-      if (trial == 8) {
-        trial = 0;
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1ns);
-      }
-    }
+    spinlock(index_acquired);
     DEBUG_LOG("Acquired read index " << read_index << " (" << read_index % N
                                      << ")");
     return read_index;
@@ -115,17 +96,26 @@ class ThreadSafeBuffer2 {
   void release_read_index(unsigned int read_index) {
     DEBUG_LOG("Entering release_read_index() with read index "
               << read_index << " (" << read_index % N << ")" << output_state());
-    for (int trial = 0; m_still_reading_index.load() != read_index; ++trial) {
-      // spinlock
+    spinlock([this, read_index]() {
+      return m_still_reading_index.load() == read_index;
+    });
+    m_still_reading_index.fetch_add(1u);
+    DEBUG_LOG("Released read index " << read_index << " (" << read_index % N
+                                     << ")");
+  }
+
+  template <typename Test>
+  void spinlock(Test test_to_pass) {
+    for (int trial = 0; not test_to_pass(); ++trial) {
+      // Try several times, then yield the CPU. This method performs well when
+      // each thread is expected to wait a short time. Replace with mutex if
+      // long wait times are expected.
       if (trial == 8) {
         trial = 0;
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(1ns);
       }
     }
-    m_still_reading_index.fetch_add(1u);
-    DEBUG_LOG("Released read index " << read_index << " (" << read_index % N
-                                     << ")");
   }
 
   auto output_state() {
