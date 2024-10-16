@@ -10,10 +10,10 @@
 class ThreadSafeBuffer2Test : public testing::Test {
  protected:
   auto static constexpr buffer_size = 16;
-  auto static constexpr n_passes = 8;
+  auto static constexpr n_passes = 1024;
   auto static constexpr n_values = n_passes * buffer_size;
 
-  auto static constexpr n_threads = 8;
+  auto static constexpr n_threads = 16;
   auto static constexpr n_ops_per_thread = n_values / n_threads;
 
   ThreadSafeBuffer2<int, buffer_size> buffer{};
