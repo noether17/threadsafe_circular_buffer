@@ -152,6 +152,15 @@ class ThreadSafeBuffer {
     return state_str;
   }
 
+  // TODO: Keeping indices in the range [0, N) ensures correctness of the
+  // increment operation for N not a power of 2, since integer overflow would
+  // cause an error in such cases. However, in a multithreaded setting, wrapping
+  // the indices allows multiple threads to access the same index
+  // simultaneously, since there is no distinction between subsequent passes
+  // through the buffer. To ensure correctness, the index needs to not only be
+  // kept in the range [0, N), but also tagged with the pass number so that
+  // indices referring to the same location but from different passes do not
+  // compare equal.
   auto static constexpr circular_increment(int i) {
     if constexpr ((N & (N - 1)) == 0) {  // if N is power of 2
       return (i + 1) % N;  // performed with bitwise-and mask for power of 2.

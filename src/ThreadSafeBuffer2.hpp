@@ -21,6 +21,10 @@
 
 template <typename T, int N>
 class ThreadSafeBuffer2 {
+  static_assert((N & (N - 1)) == 0,
+                "N must be a power of 2 to ensure correctness in case of "
+                "integer overflow.");
+
  public:
   void write_next(T t) {
     DEBUG_LOG("Entered write_next().");
