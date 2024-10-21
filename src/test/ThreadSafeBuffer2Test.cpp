@@ -305,8 +305,6 @@ TEST_F(ThreadSafeBuffer2Test, MultipleWritersMultipleReadersMixedSpeeds) {
         },
         [&output_vector, &output_mx](int a) {
           auto lock = std::lock_guard{output_mx};
-          using namespace std::chrono_literals;
-          std::this_thread::sleep_for(1us);
           output_vector.push_back(a);
         }));
   }
